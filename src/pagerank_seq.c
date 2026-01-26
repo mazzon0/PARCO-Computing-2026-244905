@@ -100,8 +100,6 @@ bool pagerank(const csr_matrix_t *const mat, double **rank) {
         // Compute delta
         vec_diff(new_rank, last_rank, diff, size);
         delta = l1_norm(diff, size);
-        
-        printf("Iteration %d: Convergence %lf\n", iteration, delta);
 
         // Update data of last iteration
         double *aux = new_rank;
@@ -109,6 +107,7 @@ bool pagerank(const csr_matrix_t *const mat, double **rank) {
         last_rank = aux;
 
         iteration++;
+        printf("Iteration %d: Convergence %lf\n", iteration, delta);
 
         // Check convergence
     } while(delta > EPSILON && iteration < MAX_ITERATIONS);
@@ -252,14 +251,13 @@ bool pagerank_original(const csr_matrix_t *const mat, double **rank) {
         vec_diff(new_rank, last_rank, diff, size);
         delta = l1_norm(diff, size);
 
-        printf("Iteration %d: Convergence %lf\n", iteration, delta);
-
         // Update data of last iteration
         double *aux = new_rank;
         new_rank = last_rank;
         last_rank = aux;
 
         iteration++;
+        printf("Iteration %d: Convergence %lf\n", iteration, delta);
 
         // Check convergence
     } while(delta > EPSILON && iteration < MAX_ITERATIONS);
