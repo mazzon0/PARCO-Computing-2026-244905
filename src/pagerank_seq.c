@@ -48,8 +48,9 @@ int main(int argc, char **argv) {
 }
 
 
-// PageRank algorithm
-
+/**
+ * PageRank implementation
+ */
 bool pagerank(const csr_matrix_t *const mat, double **rank) {
     if (mat->n_rows != mat->n_columns) {
         fprintf(stderr, "ERROR: n_rows (%" PRIu64 ") must be equal to n_columns (%" PRIu64 ")", mat->n_rows, mat->n_columns);
@@ -125,77 +126,9 @@ bool pagerank(const csr_matrix_t *const mat, double **rank) {
     return true;
 }
 
-bool pagerank_original(const csr_matrix_t *const mat, double **rank) {
-    if (mat->n_rows != mat->n_columns) {
-        fprintf(stderr, "ERROR: n_rows (%" PRIu64 ") must be equal to n_columns (%" PRIu64 ")", mat->n_rows, mat->n_columns);
-        return false;
-    }
-
-    const double EPSILON = 1e-7;
-    const double GLOBAL_RANK = 1.0;
-    const uint32_t MAX_ITERATIONS = 1000;
-    
-    uint64_t size = mat->n_rows;
-
-    // Initial distribution: uniform
-    double *e = malloc(sizeof(double) * size);
-    for (uint64_t i = 0; i < size; i++) {
-        e[i] = GLOBAL_RANK / size;
-    }
-
-    // Resource allocation
-    double *vec0 = malloc(sizeof(double) * size);
-    double *vec1 = malloc(sizeof(double) * size);
-    double *diff = malloc(sizeof(double) * size);
-
-    // Initialization
-    double *last_rank = vec0;
-    double *new_rank = vec1;
-    memcpy(vec0, e, sizeof(double) * size);
-
-    double delta;
-
-    uint32_t iteration = 0;
-    do {
-        // Matrix-Vector multiplication
-        matvec_mul(mat, last_rank, new_rank);
-        
-        // Random surfer
-        double last_norm = l1_norm(last_rank, size);
-        double new_norm = l1_norm(new_rank, size);
-        double d = last_norm - new_norm;
-        printf("d=%lf\n", d);
-        linear_comb(new_rank, e, 1.0, d, new_rank, size);
-
-        // Compute delta
-        vec_diff(new_rank, last_rank, diff, size);
-        delta = l1_norm(diff, size);
-
-        printf("Iteration %d: Convergence %lf\n", iteration, delta);
-
-        // Update data of last iteration
-        double *aux = new_rank;
-        new_rank = last_rank;
-        last_rank = aux;
-
-        iteration++;
-
-        // Check convergence
-    } while(delta > EPSILON && iteration < MAX_ITERATIONS);
-
-    // Store result
-    memcpy(*rank, last_rank, sizeof(double) * size);
-
-    // Cleanup
-    free(e);
-    free(vec0);
-    free(vec1);
-    free(diff);
-
-    return true;
-}
-
-
+/**
+ * Frees the resources used by the main function
+ */
 void cleanup(csr_matrix_t *mat, double *rank) {
     free(rank);
     free(mat->values);
@@ -266,4 +199,79 @@ double rank_loss(const uint64_t *const dangling_indices, const uint64_t dangling
         sum += rank[dangling_indices[i]];
     }
     return sum;
+}
+
+
+/**
+ * Original PageRank implementation
+ * Discarded since it converges slowly due to the model used for the random surfer
+ */
+bool pagerank_original(const csr_matrix_t *const mat, double **rank) {
+    if (mat->n_rows != mat->n_columns) {
+        fprintf(stderr, "ERROR: n_rows (%" PRIu64 ") must be equal to n_columns (%" PRIu64 ")", mat->n_rows, mat->n_columns);
+        return false;
+    }
+
+    const double EPSILON = 1e-7;
+    const double GLOBAL_RANK = 1.0;
+    const uint32_t MAX_ITERATIONS = 1000;
+    
+    uint64_t size = mat->n_rows;
+
+    // Initial distribution: uniform
+    double *e = malloc(sizeof(double) * size);
+    for (uint64_t i = 0; i < size; i++) {
+        e[i] = GLOBAL_RANK / size;
+    }
+
+    // Resource allocation
+    double *vec0 = malloc(sizeof(double) * size);
+    double *vec1 = malloc(sizeof(double) * size);
+    double *diff = malloc(sizeof(double) * size);
+
+    // Initialization
+    double *last_rank = vec0;
+    double *new_rank = vec1;
+    memcpy(vec0, e, sizeof(double) * size);
+
+    double delta;
+
+    uint32_t iteration = 0;
+    do {
+        // Matrix-Vector multiplication
+        matvec_mul(mat, last_rank, new_rank);
+        
+        // Random surfer
+        double last_norm = l1_norm(last_rank, size);
+        double new_norm = l1_norm(new_rank, size);
+        double d = last_norm - new_norm;
+        printf("d=%lf\n", d);
+        linear_comb(new_rank, e, 1.0, d, new_rank, size);
+
+        // Compute delta
+        vec_diff(new_rank, last_rank, diff, size);
+        delta = l1_norm(diff, size);
+
+        printf("Iteration %d: Convergence %lf\n", iteration, delta);
+
+        // Update data of last iteration
+        double *aux = new_rank;
+        new_rank = last_rank;
+        last_rank = aux;
+
+        iteration++;
+
+        // Check convergence
+    } while(delta > EPSILON && iteration < MAX_ITERATIONS);
+
+    // Store result
+    memcpy(*rank, last_rank, sizeof(double) * size);
+
+    // Cleanup
+    free(e);
+    free(vec0);
+    free(vec1);
+    free(diff);
+
+    return true;
 }
