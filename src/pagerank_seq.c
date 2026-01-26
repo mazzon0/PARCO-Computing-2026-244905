@@ -145,16 +145,11 @@ bool pagerank_original(const csr_matrix_t *const mat, double **rank) {
     double *vec0 = malloc(sizeof(double) * size);
     double *vec1 = malloc(sizeof(double) * size);
     double *diff = malloc(sizeof(double) * size);
-    uint64_t *dangling = malloc(sizeof(uint64_t) * size);
 
     // Initialization
     double *last_rank = vec0;
     double *new_rank = vec1;
     memcpy(vec0, e, sizeof(double) * size);
-    uint64_t dangling_size;
-    find_dangling(mat, dangling, &dangling_size);
-    double last_norm = l1_norm(vec0, size);
-    double new_norm;
 
     double delta;
 
@@ -162,16 +157,13 @@ bool pagerank_original(const csr_matrix_t *const mat, double **rank) {
     do {
         // Matrix-Vector multiplication
         matvec_mul(mat, last_rank, new_rank);
-
-        // Compute lost rank (dangling pages)
-        double teleport = rank_loss(dangling, dangling_size, new_rank, size);
         
         // Random surfer
-        new_norm = l1_norm(new_rank, size);
+        double last_norm = l1_norm(last_rank, size);
+        double new_norm = l1_norm(new_rank, size);
         double d = last_norm - new_norm;
         printf("d=%lf\n", d);
         linear_comb(new_rank, e, 1.0, d, new_rank, size);
-        vec_add_scalar(new_rank, teleport / (double)size, new_rank, size);
         
         printf("Iteration %d: %lf %lf %lf %lf\n", iteration, new_rank[0], new_rank[1], new_rank[2], new_rank[3]);
 
@@ -183,7 +175,6 @@ bool pagerank_original(const csr_matrix_t *const mat, double **rank) {
         double *aux = new_rank;
         new_rank = last_rank;
         last_rank = aux;
-        last_norm = new_norm;
 
         iteration++;
 
@@ -198,7 +189,6 @@ bool pagerank_original(const csr_matrix_t *const mat, double **rank) {
     free(vec0);
     free(vec1);
     free(diff);
-    free(dangling);
 
     return true;
 }
