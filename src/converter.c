@@ -17,12 +17,12 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    // Load file
+    // Count edges and maximum node
     uint64_t from, to;
     uint64_t max_node = 0;
     uint64_t nnz = 0;
-
     char line[256];
+
     while (fgets(line, sizeof(line), f)) {
         if (line[0] == '#') continue;
         if (sscanf(line, "%lu %lu", &from, &to) == 2) {
@@ -35,55 +35,52 @@ int main(int argc, char **argv) {
     uint64_t n_rows = max_node;
     uint64_t n_columns = max_node;
 
-    uint64_t *row_ptrs = calloc(n_rows, sizeof(uint64_t));
-    if (!row_ptrs) {
-        perror("calloc row_ptrs");
-        return 1;
-    }
+    // Count per-row and per-column links
+    uint64_t *row_counts = calloc(n_rows, sizeof(uint64_t));
+    uint64_t *col_elements = calloc(n_columns, sizeof(uint64_t));
 
     rewind(f);
-
-    // Set row_ptrs
     while (fgets(line, sizeof(line), f)) {
         if (line[0] == '#') continue;
         if (sscanf(line, "%lu %lu", &from, &to) == 2) {
-            row_ptrs[from - 1]++;
+            row_counts[from]++;       // outgoing edges
+            col_elements[to]++;       // incoming edges
         }
     }
 
+    // Build row_ptrs
+    uint64_t *row_ptrs = calloc(n_rows, sizeof(uint64_t));
     uint64_t sum = 0;
     for (uint64_t i = 0; i < n_rows; i++) {
-        uint64_t tmp = row_ptrs[i];
         row_ptrs[i] = sum;
-        sum += tmp;
+        sum += row_counts[i];
     }
 
-    // Store values
+    // Fill CSR arrays
     double   *values  = malloc(nnz * sizeof(double));
     uint64_t *columns = malloc(nnz * sizeof(uint64_t));
     uint64_t *offsets = calloc(n_rows, sizeof(uint64_t));
-    uint64_t *col_elements = calloc(n_columns, sizeof(uint64_t));
-
-    if (!values || !columns || !offsets || !col_elements) {
-        perror("malloc arrays");
-        return 1;
-    }
 
     rewind(f);
-
     while (fgets(line, sizeof(line), f)) {
         if (line[0] == '#') continue;
         if (sscanf(line, "%lu %lu", &from, &to) == 2) {
-            uint64_t row = from - 1;
+            uint64_t row = from;
             uint64_t idx = row_ptrs[row] + offsets[row];
-            columns[idx] = to - 1;
-            col_elements[to - 1] += 1;
-            values[idx] = 1.0;
+
+            // Safety check
+            if (idx >= nnz) {
+                fprintf(stderr, "ERROR: idx %lu >= nnz %lu (from=%lu, row=%lu, offsets[row]=%lu)\n",
+                        idx, nnz, from, row, offsets[row]);
+                exit(1);
+            }
+
+            columns[idx] = to;
+            values[idx]  = 1.0;
             offsets[row]++;
         }
     }
 
-    fclose(f);
     free(offsets);
 
     // Normalize values
