@@ -1,6 +1,12 @@
 # Parallel PageRank
 
-This repository implements the PageRank algorithm and tries multiple methods to parallelize it. This is a project for the "Introduction to Parallel Computing" course at University of Trento.
+This repository implements the PageRank algorithm and tries multiple methods to parallelize it.
+This is a project for the "Introduction to Parallel Computing" course at University of Trento.
+
+PageRank, developed by Google founders Sergey Brin and Larry Page, ranks web pages based on their link structure to measure their importance. 
+The algorithm involves iterative computations over sparse graphs represented by large matrices. 
+Parallelizing PageRank can dramatically reduce execution time by distributing computations across multiple cores or nodes, 
+making it an interesting problem to explore parallel computing frameworks such as OpenMP and MPI.
 
 ## Working on a remote computer
 Coming soon.
@@ -23,8 +29,8 @@ git clone git@github.com:mazzon0/PARCO-Computing-2026-244905.git
 ### Compilation
 The project is composed of 4 programs:
 - `seq` is a sequential version of PageRank
-- `omp` is a parallel version of PageRank (using OpenMP)
-- `mpi` is a parallel version of PageRank (using MPI)
+- `omp` is a parallel version of PageRank with shared memory (using OpenMP)
+- `mpi` is a parallel version of PageRank with distributed memory (using MPI)
 - `conv` is a program necessary to convert downloaded dataset to CSR
 
 You can compile everything with `make` or compile just the needed programs.
@@ -46,7 +52,7 @@ Some commonly used datasets can be downloaded and converted automatically with a
 Run ```./download.sh``` to see which datasets are available. Datasets will be downloaded into `datasets/`.
 
 ### Execution
-Execute the sequantial version with
+Execute the sequential version with
 ```bash
 bin/seq datasets/dataset_name.csr
 ```
