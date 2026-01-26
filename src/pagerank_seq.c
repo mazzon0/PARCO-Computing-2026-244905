@@ -8,39 +8,41 @@
 
 bool pagerank(const csr_matrix_t *const mat, double **rank);
 bool pagerank_original(const csr_matrix_t *const mat, double **rank);
+void cleanup(csr_matrix_t *mat, double *rank);
 
 void matvec_mul(const csr_matrix_t *const mat, const double *const vec, double *const out);
 void vec_add_scalar(const double *const vec1, double scalar, double *const out, uint64_t size);
 void vec_diff(const double *const vec1, const double *const vec2, double *const out, uint64_t size);
 void linear_comb(const double *const vec1, const double *const vec2, const double a1, const double a2, double *const out, uint64_t size);
 double l1_norm(const double *const vec, uint64_t size);
+
 void find_dangling(const csr_matrix_t *const mat, uint64_t *const out, uint64_t *out_size);
 double rank_loss(const uint64_t *const dangling_indices, const uint64_t dangling_size, const double *const rank, const uint64_t size);
 
 
-int main() {
-    double values[] = {1, 0.5, 0.5, 1};
-    uint64_t col_index[] = {0, 1, 1, 2};
-    uint64_t row_ptr[] = {0, 0, 1, 2, 5};
-
-    csr_matrix_t web = {
-        .n_columns = 4,
-        .n_rows = 4,
-        .nnz = 4,
-        .values = values,
-        .columns = col_index,
-        .row_ptrs = row_ptr,
-    };
-
-    double *rank = malloc(sizeof(double) * 4);
-    if (!pagerank(&web, &rank)) {
-        free(rank);
+int main(int argc, char **argv) {
+    // Check errors
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s path/to/web_graph.csr\n", argv[0]);
         return -1;
     }
 
+    // Load web graph
+    csr_matrix_t web;
+    if (load_csr(argv[1], &web) != 0) {
+        return -1;
+    }
+
+    // Run PageRank
+    double *rank = malloc(sizeof(double) * web.n_rows);
+    if (!pagerank(&web, &rank)) {
+        cleanup(&web, rank);
+        return -1;
+    }
     printf("%lf %lf %lf %lf\n", rank[0], rank[1], rank[2], rank[3]);
 
-    free(rank);
+    // Cleanup
+    cleanup(&web, rank);
 
     return 0;
 }
@@ -93,12 +95,12 @@ bool pagerank(const csr_matrix_t *const mat, double **rank) {
         // Random surfer
         linear_comb(new_rank, e, 1.0 - RANDOM_JUMP_PROB, RANDOM_JUMP_PROB, new_rank, size);
         vec_add_scalar(new_rank, teleport / (double)size, new_rank, size);
-        
-        printf("Iteration %d: %lf %lf %lf %lf\n", iteration, new_rank[0], new_rank[1], new_rank[2], new_rank[3]);
 
         // Compute delta
         vec_diff(new_rank, last_rank, diff, size);
         delta = l1_norm(diff, size);
+        
+        printf("Iteration %d: Convergence %lf\n", iteration, delta);
 
         // Update data of last iteration
         double *aux = new_rank;
@@ -164,12 +166,12 @@ bool pagerank_original(const csr_matrix_t *const mat, double **rank) {
         double d = last_norm - new_norm;
         printf("d=%lf\n", d);
         linear_comb(new_rank, e, 1.0, d, new_rank, size);
-        
-        printf("Iteration %d: %lf %lf %lf %lf\n", iteration, new_rank[0], new_rank[1], new_rank[2], new_rank[3]);
 
         // Compute delta
         vec_diff(new_rank, last_rank, diff, size);
         delta = l1_norm(diff, size);
+
+        printf("Iteration %d: Convergence %lf\n", iteration, delta);
 
         // Update data of last iteration
         double *aux = new_rank;
@@ -191,6 +193,14 @@ bool pagerank_original(const csr_matrix_t *const mat, double **rank) {
     free(diff);
 
     return true;
+}
+
+
+void cleanup(csr_matrix_t *mat, double *rank) {
+    free(rank);
+    free(mat->values);
+    free(mat->columns);
+    free(mat->row_ptrs);
 }
 
 
