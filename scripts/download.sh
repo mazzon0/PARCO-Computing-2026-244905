@@ -50,7 +50,7 @@ case $dataset in
         ;;
 
     *)
-        echo "Usage: ./download.sh {google|stanford}"
+        echo "Usage: scripts/download.sh {google|stanford}"
         echo "  google:     5,105,039 links"
         echo "  stanford:   2,312,497 links"
         ;;

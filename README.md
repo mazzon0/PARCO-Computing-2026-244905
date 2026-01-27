@@ -44,12 +44,12 @@ make conv
 The executables will be places in `bin/`.
 
 ### Datasets
-Some commonly used datasets can be downloaded and converted automatically with a script.
+Some commonly used datasets can be downloaded and converted automatically in the `datasets/` directory.
 ```bash
-./download.sh dataset_name
+scripts/download.sh dataset_name
 ```
 
-Run ```./download.sh``` to see which datasets are available. Datasets will be downloaded into `datasets/`.
+Run `scripts/download.sh` to see which datasets are available.
 
 ### Execution
 Execute the sequential version with
@@ -57,7 +57,7 @@ Execute the sequential version with
 bin/seq datasets/dataset_name.csr
 ```
 
-Execute the sequential version with
+Execute the OpenMP version with
 ```bash
 bin/omp datasets/dataset_name.csr
 ```

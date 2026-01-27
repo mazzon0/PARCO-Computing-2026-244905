@@ -42,7 +42,6 @@ int main(int argc, char **argv) {
 
     // Cleanup
     cleanup(&web, rank);
-    printf("Done.\n");
 
     return 0;
 }
