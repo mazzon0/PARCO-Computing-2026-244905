@@ -57,4 +57,12 @@ Execute the sequential version with
 bin/seq datasets/dataset_name.csr
 ```
 
-OMP and MPI are coming soon.
+Execute the sequential version with
+```bash
+bin/omp datasets/dataset_name.csr
+```
+
+MPI is coming soon.
+
+### Reproducible tests
+Coming soon.
