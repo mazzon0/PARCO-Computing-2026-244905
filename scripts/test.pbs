@@ -3,41 +3,50 @@
 #PBS -o output.txt
 #PBS -e error.txt
 #PBS -q short_cpuQ
-#PBS -l walltime=0:02:00
-#PBS -l select=1:ncpus=1
-#PBS -l mem=8gb
+#PBS -l walltime=1:00:00
+#PBS -l mem=16gb
 
 set -euo pipefail
 
-if [ "$#" -lt 2 ]; then
-    echo "Usage: qsub $0 -- <program> <graph> [program args...]"
-    exit 1
-fi
-
-program=$1
-graph=$2
-shift 2
-program_args="$@"
-
-CORES=${PBS_NCPUS:-1}
-export OMP_NUM_THREADS=$CORES
-
 STATS_FILE="stats.txt"
-BIN="./bin/${program}"
+ITERATIONS=10
+SCALE=5
 
-if [ ! -x "$BIN" ]; then
-    echo "Error: executable $BIN not found or not executable"
-    exit 1
-fi
+datasets=("stanford" "google")
 
-echo "----------------------------------------" >> "$STATS_FILE"
-echo "Program: $program" >> "$STATS_FILE"
-echo "Graph:   $graph" >> "$STATS_FILE"
-echo "Args:    $program_args" >> "$STATS_FILE"
-echo "Cores:   $CORES" >> "$STATS_FILE"
-echo "Date:    $(date)" >> "$STATS_FILE"
+module load perf
 
-perf stat \
-    -e cache-references,cache-misses,cycles,instructions \
-    "$BIN" "$graph" $program_args \
-    >> "$STATS_FILE" 2>&1
+# Sequential
+echo "Running tests for sequential PageRank..."
+for dataset in "${datasets[@]}"; do
+    for ((i=0; i<$ITERATIONS; i++)); do
+        echo "SEQ" >> "$STATS_FILE"
+        perf stat -e cache-references,cache-misses,cycles,instructions \
+            bin/seq datasets/${dataset}.csr >> "$STATS_FILE"
+    done
+done
+
+# Shared memory
+echo "Running tests for OpenMP PageRank..."
+export OMP_NUM_THREADS=1
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
+
+for ((j=0; j<$SCALE; j++)); do
+    export OMP_NUM_THREADS=$((OMP_NUM_THREADS*2))
+    echo "  N_THREADS=$(OMP_NUM_THREADS)"
+
+    for dataset in "${datasets[@]}"; do
+        for ((i=0; i<$ITERATIONS; i++)); do
+            echo "OMP $(OMP_NUM_THREADS)" >> "$STATS_FILE"
+            perf stat -e cache-references,cache-misses,cycles,instructions \
+                bin/omp datasets/${dataset}.csr >> "$STATS_FILE"
+        done
+    done
+done
+
+# TODO Distributed memory
+
+module unload perf
+
+echo "Done."
