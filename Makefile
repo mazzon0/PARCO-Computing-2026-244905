@@ -1,7 +1,7 @@
 CFLAGS = -O2 -Wall
 COMMON_SRC = src/common/csr_utils.c
 
-all: seq omp mpi conv
+all: seq omp conv
 
 seq:
 	mkdir -p bin

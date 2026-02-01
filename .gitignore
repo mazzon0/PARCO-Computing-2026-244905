@@ -1,3 +1,4 @@
 web_generator/
 bin/
 datasets/
+*.txt
