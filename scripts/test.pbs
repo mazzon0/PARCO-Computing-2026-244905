@@ -1,10 +1,12 @@
 #!/bin/bash
 #PBS -N pagerank_test
 #PBS -o output.txt
-#PBS -e error.txt
+#PBS -e output.txt
 #PBS -q short_cpuQ
 #PBS -l walltime=1:00:00
-#PBS -l mem=16gb
+#PBS -l select=1:ncpus=32:mem=16gb
+
+cd $PBS_O_WORKDIR
 
 set -euo pipefail
 
@@ -22,7 +24,7 @@ for dataset in "${datasets[@]}"; do
     for ((i=0; i<$ITERATIONS; i++)); do
         echo "SEQ" >> "$STATS_FILE"
         perf stat -e cache-references,cache-misses,cycles,instructions \
-            bin/seq datasets/${dataset}.csr >> "$STATS_FILE"
+            bin/seq datasets/${dataset}.csr 2>> "$STATS_FILE"
     done
 done
 
@@ -34,13 +36,13 @@ export OMP_PLACES=cores
 
 for ((j=0; j<$SCALE; j++)); do
     export OMP_NUM_THREADS=$((OMP_NUM_THREADS*2))
-    echo "  N_THREADS=$(OMP_NUM_THREADS)"
+    echo "  N_THREADS=${OMP_NUM_THREADS}"
 
     for dataset in "${datasets[@]}"; do
         for ((i=0; i<$ITERATIONS; i++)); do
-            echo "OMP $(OMP_NUM_THREADS)" >> "$STATS_FILE"
+            echo "OMP ${OMP_NUM_THREADS}" >> "$STATS_FILE"
             perf stat -e cache-references,cache-misses,cycles,instructions \
-                bin/omp datasets/${dataset}.csr >> "$STATS_FILE"
+                bin/omp datasets/${dataset}.csr 2>> "$STATS_FILE"
         done
     done
 done
