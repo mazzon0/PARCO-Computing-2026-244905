@@ -8,13 +8,46 @@ The algorithm involves iterative computations over sparse graphs represented by 
 Parallelizing PageRank can dramatically reduce execution time by distributing computations across multiple cores or nodes, 
 making it an interesting problem to explore parallel computing frameworks such as OpenMP and MPI.
 
-## Working on a remote computer
-Coming soon.
+## Working on a remote cluster
+This section includes all the information to work with this repo in a remote cluster with the PBS scheduler.
+
+### Quick Start (UniTN cluster)
+These section contains the instructions to quickly setup the project on the cluster `hpc.unitn.it`.
+To reproduce the project in other environments, please check out the following sections.
+
+First, start an interactive session on a compute node.
+```bash
+qsub -I -q short_cpuQ
+```
+
+Download the repository.
+```bash
+git clone git@github.com:mazzon0/PARCO-Computing-2026-244905.git
+cd PARCO-Computing-2026-244905
+```
+
+Compile the source code and download the datasets.
+```bash
+scripts/setup.sh
+```
+
+Exit the interactive session and go back to a head node.
+```bash
+exit
+```
+
+Now the setup has completed, and you are ready to schedule the PBS job.
+```bash
+cd PARCO-Computing-2026-244905
+qsub scripts/test.pbs
+```
+
+### TODO
 
 ## Working on a local computer
 
 ### Installation
-This project requires a Linux environment with some basic development packages: `gcc`, `gzip`, `bash`, `wget`.
+This project requires a Linux environment with some basic development packages: `gcc`, `make`, `gzip`, `bash`, `wget`.
 
 On Ubuntu and Debian you can run this command to install the necessary packages.
 ```bash
@@ -63,6 +96,3 @@ bin/omp datasets/dataset_name.csr
 ```
 
 MPI is coming soon.
-
-### Reproducible tests
-Coming soon.
