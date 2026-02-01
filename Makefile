@@ -1,4 +1,4 @@
-CFLAGS = -O2 -Wall
+CFLAGS = -std=c99 -O2 -Wall
 COMMON_SRC = src/common/csr_utils.c
 
 all: seq omp conv

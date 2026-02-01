@@ -106,7 +106,7 @@ bool pagerank(const csr_matrix_t *const mat, double **rank) {
 
         delta = 0.0;
 
-        #pragma omp parallel for simd reduction(+:delta)
+        #pragma omp parallel for reduction(+:delta)
         for (uint64_t i = 0; i < size; i++) {
             double v = (1.0 - RANDOM_JUMP_PROB) * new_rank[i] + RANDOM_JUMP_PROB * e[i];
             v += teleport / size;
@@ -154,7 +154,7 @@ void cleanup(csr_matrix_t *mat, double *rank) {
 // Helper functions
 
 void matvec_mul(const csr_matrix_t *const mat, const double *const vec, double *const out) {
-    #pragma omp parallel for simd schedule(static, 512)
+    #pragma omp parallel for schedule(static, 512)
     for (uint64_t j = 0; j < mat->n_rows; j++) {
         double sum = 0.0;
 
@@ -167,21 +167,21 @@ void matvec_mul(const csr_matrix_t *const mat, const double *const vec, double *
 }
 
 void vec_add_scalar(const double *const vec1, double scalar, double *const out, uint64_t size) {
-    #pragma omp parallel for simd
+    #pragma omp parallel for
     for (uint64_t i = 0; i < size; i++) {
         out[i] = vec1[i] + scalar;
     }
 }
 
 void vec_diff(const double *const vec1, const double *const vec2, double *const out, uint64_t size) {
-    #pragma omp parallel for simd
+    #pragma omp parallel for
     for (uint64_t i = 0; i < size; i++) {
         out[i] = vec1[i] - vec2[i];
     }
 }
 
 void linear_comb(const double *const vec1, const double *const vec2, const double a1, const double a2, double *const out, uint64_t size) {
-    #pragma omp parallel for simd
+    #pragma omp parallel for
     for (uint64_t i = 0; i < size; i++) {
         out[i] = vec1[i] * a1 + vec2[i] * a2;
     }
@@ -190,7 +190,7 @@ void linear_comb(const double *const vec1, const double *const vec2, const doubl
 double l1_norm(const double *const vec, uint64_t size) {
     double sum = 0.0;
 
-    #pragma omp parallel for simd reduction(+:sum)
+    #pragma omp parallel for reduction(+:sum)
     for (uint64_t i = 0; i < size; i++) {
         sum += fabs(vec[i]);
     }
@@ -217,7 +217,7 @@ void find_dangling(const csr_matrix_t *const mat, uint64_t *const out, uint64_t 
 double rank_loss(const uint64_t *const dangling_indices, const uint64_t dangling_size, const double *const rank, const uint64_t size) {
     double sum = 0.0;
 
-    #pragma omp parallel for simd reduction(+:sum)
+    #pragma omp parallel for reduction(+:sum)
     for (uint64_t i = 0; i < dangling_size; i++) {
         sum += rank[dangling_indices[i]];
     }
