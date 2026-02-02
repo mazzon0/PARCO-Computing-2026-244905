@@ -6,6 +6,12 @@
 #include <math.h>
 #include "common/csr_utils.h"
 
+double *e;
+double *vec0;
+double *vec1;
+double *diff;
+uint64_t *dangling;
+
 bool pagerank(const csr_matrix_t *const mat, double **rank);
 bool pagerank_original(const csr_matrix_t *const mat, double **rank);
 void cleanup(csr_matrix_t *mat, double *rank);
@@ -36,12 +42,19 @@ int main(int argc, char **argv) {
             return -1;
         }
     }
-
+    
     // Load web graph
     csr_matrix_t web;
     if (load_csr(argv[1], &web) != 0) {
         return -1;
     }
+
+    // Preallocate buffers
+    e = malloc(sizeof(double) * size);
+    vec0 = malloc(sizeof(double) * size);
+    vec1 = malloc(sizeof(double) * size);
+    diff = malloc(sizeof(double) * size);
+    dangling = malloc(sizeof(uint64_t) * size);
 
     // Run PageRank
     double *rank = malloc(sizeof(double) * web.n_rows);
@@ -68,7 +81,7 @@ bool pagerank(const csr_matrix_t *const mat, double **rank) {
         return false;
     }
 
-    const double EPSILON = 1e-7;
+    const double EPSILON = 1e-6;
     const double GLOBAL_RANK = 1.0;
     const uint32_t MAX_ITERATIONS = 1000;
     const double RANDOM_JUMP_PROB = 0.15;
@@ -76,16 +89,10 @@ bool pagerank(const csr_matrix_t *const mat, double **rank) {
     uint64_t size = mat->n_rows;
 
     // Initial distribution: uniform
-    double *e = malloc(sizeof(double) * size);
+    double init_val = GLOBAL_RANK / size;
     for (uint64_t i = 0; i < size; i++) {
-        e[i] = GLOBAL_RANK / size;
+        e[i] = init_val;
     }
-
-    // Resource allocation
-    double *vec0 = malloc(sizeof(double) * size);
-    double *vec1 = malloc(sizeof(double) * size);
-    double *diff = malloc(sizeof(double) * size);
-    uint64_t *dangling = malloc(sizeof(uint64_t) * size);
 
     // Initialization
     double *last_rank = vec0;
@@ -105,7 +112,6 @@ bool pagerank(const csr_matrix_t *const mat, double **rank) {
         double teleport = rank_loss(dangling, dangling_size, new_rank, size);
         
 #       ifndef MERGE_VECTOR_OPERATIONS
-        
         // Random surfer
         linear_comb(new_rank, e, 1.0 - RANDOM_JUMP_PROB, RANDOM_JUMP_PROB, new_rank, size);
         vec_add_scalar(new_rank, teleport / (double)size, new_rank, size);
@@ -115,18 +121,7 @@ bool pagerank(const csr_matrix_t *const mat, double **rank) {
         delta = l1_norm(diff, size);
 
 #       else
-
-        delta = 0.0;
-
-        #pragma omp parallel for reduction(+:delta)
-        for (uint64_t i = 0; i < size; i++) {
-            double v = (1.0 - RANDOM_JUMP_PROB) * new_rank[i] + RANDOM_JUMP_PROB * e[i];
-            v += teleport / size;
-            diff[i] = v - last_rank[i];
-            delta += fabs(v - last_rank[i]);
-            new_rank[i] = v;
-        }
-
+        delta = random_surfer(new_rank, e, size, RANDOM_JUMP_PROB, teleport);
 #       endif
 
         // Update data of last iteration
@@ -142,13 +137,6 @@ bool pagerank(const csr_matrix_t *const mat, double **rank) {
     // Store result
     memcpy(*rank, last_rank, sizeof(double) * size);
 
-    // Cleanup
-    free(e);
-    free(vec0);
-    free(vec1);
-    free(diff);
-    free(dangling);
-
     return true;
 }
 
@@ -160,6 +148,11 @@ void cleanup(csr_matrix_t *mat, double *rank) {
     free(mat->values);
     free(mat->columns);
     free(mat->row_ptrs);
+    free(e);
+    free(vec0);
+    free(vec1);
+    free(diff);
+    free(dangling);
 }
 
 
@@ -235,4 +228,21 @@ double rank_loss(const uint64_t *const dangling_indices, const uint64_t dangling
     }
 
     return sum;
+}
+
+double random_surfer(double *new_rank, double *last_rank, double *e, uint64_t size, double random_jump_prob, double teleport) {
+    double delta = 0.0;
+
+    #pragma omp parallel for reduction(+:delta)
+    for (uint64_t i = 0; i < size; i++) {
+        // Random Surfer
+        double v = (1.0 - random_jump_prob) * new_rank[i] + random_jump_prob * e[i];
+        v += teleport / size;
+        new_rank[i] = v;
+
+        // Compute Delta
+        delta += fabs(v - last_rank[i]);
+    }
+
+    return delta;
 }
