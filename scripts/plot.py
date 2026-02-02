@@ -1,97 +1,75 @@
-import re
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
 
-OUTPATH = 'results/gapbs_plots.png'
+# Configuration
+GAPBS_CSV = 'gapbs.csv'
+OMP_CSV = 'omp.csv'
+OUTPATH = 'results/comparison_plots.png'
 
-def parse_perf_log(log_text):
-    data = []
-    # Pattern to match the headers and extract config
-    # Matches: GAPBS bind=spread place=threads threads=1 dataset=stanford
-    config_pattern = r"GAPBS bind=(\w+) place=(\w+) threads=(\d+) dataset=(\w+)"
+def load_and_prepare(file_path, label):
+    if not os.path.exists(file_path):
+        print(f"Warning: {file_path} not found.")
+        return pd.DataFrame()
     
-    # Split the log into blocks based on the GAPBS header
-    blocks = re.split(r"(GAPBS bind=)", log_text)
-    
-    for i in range(1, len(blocks), 2):
-        header_content = blocks[i] + blocks[i+1]
-        
-        # Extract metadata
-        meta = re.search(config_pattern, header_content)
-        if not meta: continue
-        
-        bind, place, threads, dataset = meta.groups()
-        
-        # Extract metrics using regex
-        cache_misses = re.search(r"([\d,]+)\s+cache-misses", header_content)
-        cache_refs = re.search(r"([\d,]+)\s+cache-references", header_content)
-        cycles = re.search(r"([\d,]+)\s+cycles", header_content)
-        instructions = re.search(r"([\d,]+)\s+instructions", header_content)
-        elapsed = re.search(r"([\d.]+)\s+seconds time elapsed", header_content)
-        
-        # Clean numeric data (remove commas)
-        def clean(val): return float(val.group(1).replace(',', '')) if val else None
+    df = pd.read_csv(file_path)
+    df['impl'] = label
+    # Calculate derived metrics
+    df['miss_rate'] = (df['cache misses'] / df['cache refs']) * 100
+    df['ipc'] = df['instructions'] / df['cycles']
+    return df
 
-        c_miss = clean(cache_misses)
-        c_ref = clean(cache_refs)
-        inst = clean(instructions)
-        cyc = clean(cycles)
-        time = clean(elapsed)
-        
-        data.append({
-            'bind': bind,
-            'place': place,
-            'threads': int(threads),
-            'dataset': dataset,
-            'time': time,
-            'miss_rate': (c_miss / c_ref) * 100 if c_miss and c_ref else 0,
-            'ipc': inst / cyc if inst and cyc else 0
-        })
-        
-    return pd.DataFrame(data)
+# 1. Load Data
+df_gapbs = load_and_prepare(GAPBS_CSV, 'GAPBS')
+df_omp = load_and_prepare(OMP_CSV, 'Custom-OMP')
 
-# --- Main Script ---
-log_data = open('results/stats.txt').read()
-
-df = parse_perf_log(log_data)
-
+# Combine them
+df = pd.concat([df_gapbs, df_omp], ignore_index=True)
 df = df.sort_values('threads')
-for (ds, bnd), group in df.groupby(['dataset', 'bind']):
-    t1 = group[group['threads'] == 1]['time'].values[0]
-    df.loc[group.index, 'speedup'] = t1 / group['time']
 
-fig, axes = plt.subplots(2, 2, figsize=(14, 10))
-fig.suptitle('GAPBS Performance Analysis', fontsize=16)
+# 2. Calculate Speedup
+# We calculate speedup relative to the 1-thread time of the SAME implementation and dataset
+for (impl, ds), group in df.groupby(['impl', 'dataset']):
+    t1_row = group[group['threads'] == 1]
+    if not t1_row.empty:
+        t1 = t1_row['execution time'].values[0]
+        df.loc[group.index, 'speedup'] = t1 / group['execution time']
 
-# Strong Scaling
-for label, group in df.groupby(['dataset', 'bind']):
-    axes[0,0].plot(group['threads'], group['time'], marker='o', label=f"{label[0]} ({label[1]})")
-axes[0,0].set_title('Strong Scaling (Lower is Better)')
-axes[0,0].set_ylabel('Seconds')
-axes[0,0].legend()
+# 3. Plotting
+fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+fig.suptitle('Performance Comparison: GAPBS vs Custom OMP', fontsize=20)
 
-# Speedup
-for label, group in df.groupby(['dataset', 'bind']):
-    axes[0,1].plot(group['threads'], group['speedup'], marker='s', label=f"{label[0]} ({label[1]})")
-axes[0,1].plot(df['threads'].unique(), df['threads'].unique(), color='black', linestyle='--', label='Ideal')
-axes[0,1].set_title('Strong Scaling Speedup')
-axes[0,1].set_ylabel('Speedup Factor')
-axes[0,1].legend()
+# We want to compare datasets, so we'll use different colors/markers for Dataset+Impl
+metrics = [
+    ('execution time', 'Execution Time (s)', 'Time Comparison'),
+    ('speedup', 'Speedup Factor', 'Strong Scaling Speedup'),
+    ('miss_rate', 'Cache Miss Rate (%)', 'Cache Efficiency'),
+    ('ipc', 'IPC (Insn/Cycle)', 'Instruction Throughput')
+]
 
-# Cache Miss Rate
-for label, group in df.groupby(['dataset', 'bind']):
-    axes[1,0].plot(group['threads'], group['miss_rate'], marker='^', label=f"{label[0]} ({label[1]})")
-axes[1,0].set_title('Cache Miss Rate')
-axes[1,0].set_ylabel('Percentage (%)')
-axes[1,0].legend()
+# Helper to plot each subplot
+for i, (col, ylabel, title) in enumerate(metrics):
+    ax = axes[i//2, i%2]
+    
+    # Group by Dataset and Implementation
+    # We'll filter for a specific affinity (e.g., spread-threads) to keep the graph clean,
+    # or you can plot everything. Here we plot all unique pairs.
+    for (ds, impl, bind), group in df.groupby(['dataset', 'impl', 'bind']):
+        label = f"{impl} - {ds} ({bind})"
+        # Use solid lines for GAPBS, dashed for OMP
+        linestyle = '-' if impl == 'GAPBS' else '--'
+        ax.plot(group['threads'], group[col], marker='o', label=label, linestyle=linestyle)
 
-# IPC
-for label, group in df.groupby(['dataset', 'bind']):
-    axes[1,1].plot(group['threads'], group['ipc'], marker='x', label=f"{label[0]} ({label[1]})")
-axes[1,1].set_title('Instructions Per Cycle (IPC)')
-axes[1,1].set_ylabel('IPC Value')
-axes[1,1].legend()
+    if col == 'speedup':
+        ax.plot(df['threads'].unique(), df['threads'].unique(), color='black', linestyle=':', label='Ideal')
+
+    ax.set_title(title, fontsize=14)
+    ax.set_ylabel(ylabel)
+    ax.set_xlabel('Threads')
+    ax.grid(True, alpha=0.3)
+    ax.legend(prop={'size': 8})
 
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+os.makedirs('results', exist_ok=True)
 plt.savefig(OUTPATH, dpi=300)
-plt.close()
+print(f"Comparison plot saved to {OUTPATH}")
