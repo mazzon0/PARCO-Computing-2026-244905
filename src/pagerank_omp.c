@@ -22,9 +22,19 @@ double rank_loss(const uint64_t *const dangling_indices, const uint64_t dangling
 
 int main(int argc, char **argv) {
     // Check errors
-    if (argc != 2) {
-        fprintf(stderr, "Usage: %s path/to/web_graph.csr\n", argv[0]);
+    if (argc < 2 || argc > 3) {
+        fprintf(stderr, "Usage: %s path/to/web_graph.csr [tries]\n", argv[0]);
         return -1;
+    }
+
+    // Parse tries (default to 10 if not provided)
+    int tries = 10; 
+    if (argc == 3) {
+        tries = atoi(argv[2]);
+        if (tries <= 0) {
+            fprintf(stderr, "Error: Number of tries must be a positive integer.\n");
+            return -1;
+        }
     }
 
     // Load web graph
@@ -35,9 +45,11 @@ int main(int argc, char **argv) {
 
     // Run PageRank
     double *rank = malloc(sizeof(double) * web.n_rows);
-    if (!pagerank(&web, &rank)) {
-        cleanup(&web, rank);
-        return -1;
+    for (int i = 0; i < tries; i++) {
+        if (!pagerank(&web, &rank)) {
+            cleanup(&web, rank);
+            return -1;
+        }
     }
 
     // Cleanup
