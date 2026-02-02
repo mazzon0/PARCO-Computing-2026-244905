@@ -21,7 +21,7 @@ case $dataset in
             exit 1
         fi
         bin/converter datasets/web-Stanford.txt datasets/stanford.csr
-        rm datasets/web-Stanford.txt
+        mv datasets/web-Stanford.txt datasets/stanford.el
 
         echo "Done. Run PageRank with 'bin/seq datasets/stanford.csr'"
         ;;
@@ -44,7 +44,7 @@ case $dataset in
             exit 1
         fi
         bin/converter datasets/web-Google.txt datasets/google.csr
-        rm datasets/web-Google.txt
+        mv datasets/web-Google.txt google.el
 
         echo "Done. Run PageRank with 'bin/seq datasets/google.csr'"
         ;;
