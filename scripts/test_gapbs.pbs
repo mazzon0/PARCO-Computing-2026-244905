@@ -1,5 +1,6 @@
 #!/bin/bash
-#PBS -N GAPBS_Benchmark
+#PBS -N PageRank_Benchmark_GAPBS
+#PBS -j oe
 #PBS -o gapbs.txt
 #PBS -e gapbs.txt
 #PBS -q short_cpuQ
@@ -9,7 +10,7 @@
 cd $PBS_O_WORKDIR
 
 # Ensure binaries exist
-if [ ! -x "./pr_spmv" ]; then
+if [ ! -x "comparison/gapbs/pr_spmv" ]; then
     echo "Error: 'pr_spmv' binary not found or not executable."
     exit 1
 fi
@@ -17,14 +18,14 @@ fi
 mkdir -p results
 
 STATS_FILE="results/stats.txt"
-DATASETS=(stanford.el google.el)
+DATASETS=(stanford google)
 PLACES=(threads cores)
 BIND=(spread close)
 
 module load perf || echo "Perf module not found, continuing without it..."
 
-for bind in $BIND; do
-    for place in $PLACES; do
+for bind in "${BIND[@]}"; do
+    for place in "${PLACES[@]}"; do
         for threads in 1 2 4 8 16 32 64; do
             export OMP_NUM_THREADS=$threads
             export OMP_PROC_BIND=$bind
@@ -33,10 +34,11 @@ for bind in $BIND; do
             for dataset in "${DATASETS[@]}"; do
                 echo "GAPBS bind=${bind} place=${place} threads=${threads} dataset=${dataset}" >> $STATS_FILE
                 perf stat -e cache-references,cache-misses,cycles,instructions \
-                    ./pr_spmv -f "$dataset" -t 0.000001 -n 10 -i 1000 2>> $STATS_FILE
+                    comparison/gapbs/pr_spmv -f "datasets/${dataset}.el" -t 0.000001 -n 10 -i 1000 2>> $STATS_FILE
             done
         done
     done
 done
 
 echo "GAPBS Test Finished"
+echo ""

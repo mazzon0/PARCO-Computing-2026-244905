@@ -21,7 +21,8 @@ case $dataset in
             exit 1
         fi
         bin/converter datasets/web-Stanford.txt datasets/stanford.csr
-        mv datasets/web-Stanford.txt datasets/stanford.el
+        grep -v '^#' datasets/web-Stanford.txt | awk '{print $1" "$2}' > datasets/stanford.el
+        rm datasets/web-Stanford.txt
 
         echo "Done. Run PageRank with 'bin/seq datasets/stanford.csr'"
         ;;
@@ -44,7 +45,8 @@ case $dataset in
             exit 1
         fi
         bin/converter datasets/web-Google.txt datasets/google.csr
-        mv datasets/web-Google.txt google.el
+        grep -v '^#' datasets/web-Google.txt | awk '{print $1" "$2}' > datasets/google.el
+        rm datasets/web-Google.txt
 
         echo "Done. Run PageRank with 'bin/seq datasets/google.csr'"
         ;;

@@ -2,4 +2,7 @@ web_generator/
 bin/
 datasets/
 results/
-*.txt
+comparison/
+scripts/.venv/
+gapbs.txt
+output.txt

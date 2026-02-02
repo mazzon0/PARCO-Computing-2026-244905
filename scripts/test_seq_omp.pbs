@@ -1,5 +1,5 @@
 #!/bin/bash
-#PBS -N pagerank_test
+#PBS -N PageRank_Benchmark_Custom
 #PBS -o output.txt
 #PBS -e output.txt
 #PBS -q short_cpuQ
