@@ -93,5 +93,5 @@ axes[1,1].set_ylabel('IPC Value')
 axes[1,1].legend()
 
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-plt.savefig(OUTDIR, dpi=300)
+plt.savefig(OUTPATH, dpi=300)
 plt.close()
