@@ -50,6 +50,7 @@ int main(int argc, char **argv) {
     }
 
     // Preallocate buffers
+    uint64_t size = web.n_rows;
     e = malloc(sizeof(double) * size);
     vec0 = malloc(sizeof(double) * size);
     vec1 = malloc(sizeof(double) * size);
