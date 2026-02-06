@@ -19,15 +19,11 @@ PROCESS_LIST=(1 2 4 8 16 32 64 128 256)
 module load perf || echo "Perf not found, continuing..."
 
 echo "Running MPI Tests..."
-for bind in "${BIND[@]}"; do
-    for place in "${PLACES[@]}"; do
-        for processes in "${PROCESS_LIST[@]}"; do
-            for dataset in "${DATASETS[@]}"; do
-                echo "MPI threads=${threads} dataset=${dataset}" >> "$STATS_FILE"
-                mpiexec -n $processes perf stat -e cache-references,cache-misses,cycles,instructions \
-                    bin/mpi "datasets/${dataset}.csr" 10 2>> "$STATS_FILE"
-            done
-        done
+for processes in "${PROCESS_LIST[@]}"; do
+    for dataset in "${DATASETS[@]}"; do
+        echo "MPI threads=${processes} dataset=${dataset}" >> "$STATS_FILE"
+        mpiexec -n $processes perf stat -e cache-references,cache-misses,cycles,instructions \
+            bin/mpi "datasets/${dataset}.csr" 10 2>> "$STATS_FILE"
     done
 done
 
