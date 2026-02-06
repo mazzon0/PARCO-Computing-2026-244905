@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 199309L
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -28,7 +29,7 @@ double l1_norm(const double *const vec, uint64_t size);
 
 void find_dangling(const csr_matrix_t *const mat, uint64_t *const out, uint64_t *out_size);
 double rank_loss(const uint64_t *const dangling_indices, const uint64_t dangling_size, const double *const rank, const uint64_t size);
-
+double random_surfer(double *new_rank, double *last_rank, double *e, uint64_t size, double random_jump_prob, double teleport);
 
 int main(int argc, char **argv) {
     // Check errors
@@ -134,7 +135,7 @@ bool pagerank(const csr_matrix_t *const mat, double **rank) {
         delta = l1_norm(diff, size);
 
 #       else
-        delta = random_surfer(new_rank, e, size, RANDOM_JUMP_PROB, teleport);
+        delta = random_surfer(new_rank, last_rank, e, size, RANDOM_JUMP_PROB, teleport);
 #       endif
 
         // Update data of last iteration

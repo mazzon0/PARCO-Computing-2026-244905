@@ -1,6 +1,6 @@
 CFLAGS = -std=c99 -O3 -Wall -march=native
 COMMON_SRC = src/common/csr_utils.c
-LDFLAGS = -lm
+LDFLAGS = -lm -lrt
 
 all: seq omp omp2 mpi conv
 
