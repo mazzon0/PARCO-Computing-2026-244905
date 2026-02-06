@@ -8,6 +8,8 @@
 #include "common/csr_utils.h"
 #include "common/time_utils.h"
 
+double *execution_times;
+
 double *e;
 double *vec0;
 double *vec1;
@@ -54,6 +56,9 @@ int main(int argc, char **argv) {
         return -1;
     }
 
+    // Timer data
+    execution_times = malloc(sizeof(double) * tries);
+
     // Preallocate buffers
     uint64_t size = web.n_rows;
     e = malloc(sizeof(double) * size);
@@ -75,6 +80,7 @@ int main(int argc, char **argv) {
         execution_times[i] = end - start;
     }
 
+    // Print metrics
     double avg = get_average(execution_times, tries);
     double med = get_median(execution_times, tries);
     printf("Average time: %lf - Median time: %lf\n", avg, med);
@@ -167,6 +173,7 @@ void cleanup(csr_matrix_t *mat, double *rank) {
     free(vec1);
     free(diff);
     free(dangling);
+    free(execution_times);
 }
 
 int compare_doubles(const void *a, const void *b) {
