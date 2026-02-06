@@ -17,6 +17,7 @@ DATASETS=("stanford" "google")
 PROCESS_LIST=(1 2 4 8 16 32 64 128 256)
 
 module load perf || echo "Perf not found, continuing..."
+module load mpich-3.2.1-gcc-9.1.0 || || echo "MPI not found, continuing..."
 
 echo "Running MPI Tests..."
 for processes in "${PROCESS_LIST[@]}"; do
@@ -26,6 +27,9 @@ for processes in "${PROCESS_LIST[@]}"; do
             bin/mpi "datasets/${dataset}.csr" 10 2>> "$STATS_FILE"
     done
 done
+
+module unload perf
+module unload mpich-3.2.1-gcc-9.1.0
 
 echo "MPI Benchmark Finished."
 echo ""
