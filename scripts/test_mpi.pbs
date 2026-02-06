@@ -25,7 +25,7 @@ for processes in "${PROCESS_LIST[@]}"; do
     for dataset in "${DATASETS[@]}"; do
         echo "MPI threads=${processes} dataset=${dataset}" >> "$STATS_FILE"
         mpirun -np $processes perf stat -e cache-references,cache-misses,cycles,instructions \
-            bin/mpi "datasets/${dataset}.csr" 10 2>> "${PMI_RANK}_${STATS_FILE}"
+            bin/mpi "datasets/${dataset}.csr" 10 >> "${PMI_RANK}_${STATS_FILE}" 2>&1
     done
 done
 

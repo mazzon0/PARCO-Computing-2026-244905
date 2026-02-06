@@ -22,6 +22,9 @@ void find_dangling(const csr_matrix_t *const mat, uint64_t *const out, uint64_t 
 void matvec_mul(const csr_matrix_t *const mat, const double *const vec, double *const out, int n_proc);
 double rank_loss(const uint64_t *const dangling_indices, const uint64_t dangling_size, const double *const rank);
 double random_surfer(double *new_rank, double *last_rank, double *e, uint64_t local_size, uint64_t global_size, double random_jump_prob, double teleport);
+int compare_doubles(const void *a, const void *b);
+double get_average(double *times, int n);
+double get_median(double *times, int n);
 
 int main(int argc, char **argv) {
     // Check errors
@@ -65,6 +68,9 @@ int main(int argc, char **argv) {
     counts = malloc(sizeof(int) * n_proc);
     displs = malloc(sizeof(int) * n_proc);
 
+    // Time data
+    double *execution_times = malloc(sizeof(double) * tries);
+
     int local_n_int = (int)local_size;
     MPI_Allgather(&local_n_int, 1, MPI_INT, counts, 1, MPI_INT, MPI_COMM_WORLD);
     displs[0] = 0;
@@ -75,7 +81,19 @@ int main(int argc, char **argv) {
     // Run PageRank
     double *rankv = malloc(sizeof(double) * local_size);
     for (int i = 0; i < tries; i++) {
+        MPI_Barrier(MPI_COMM_WORLD);
+        double start = MPI_Wtime();
         pagerank(&web, &rankv, rank, n_proc);
+        double end = MPI_Wtime();
+
+        execution_times[i] = end - start;
+    }
+
+    // Print metrics
+    if (rank == 0) {
+        double avg = get_average(execution_times, tries);
+        double med = get_median(execution_times, tries);
+        printf("Average time: %lf - Median time: %lf\n", avg, med);
     }
 
     free(rankv);
@@ -86,6 +104,7 @@ int main(int argc, char **argv) {
     free(global_vec);
     free(counts);
     free(displs);
+    free(execution_times);
     cleanup(&web); 
 
     MPI_Finalize();
@@ -264,4 +283,27 @@ double random_surfer(double *new_rank, double *last_rank, double *e, uint64_t lo
     double global_delta = 0.0;
     MPI_Allreduce(&local_delta, &global_delta, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     return global_delta;
+}
+
+int compare_doubles(const void *a, const void *b) {
+    double arg1 = *(const double *)a;
+    double arg2 = *(const double *)b;
+    if (arg1 < arg2) return -1;
+    if (arg1 > arg2) return 1;
+    return 0;
+}
+
+double get_average(double *times, int n) {
+    double sum = 0;
+    for (int i = 0; i < n; i++) sum += times[i];
+    return sum / n;
+}
+
+double get_median(double *times, int n) {
+    qsort(times, n, sizeof(double), compare_doubles);
+    if (n % 2 == 0) {
+        return (times[n / 2 - 1] + times[n / 2]) / 2.0;
+    } else {
+        return times[n / 2];
+    }
 }

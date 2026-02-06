@@ -6,3 +6,5 @@ comparison/
 scripts/.venv/
 gapbs.txt
 output.txt
+omp2.txt
+mpi.txt

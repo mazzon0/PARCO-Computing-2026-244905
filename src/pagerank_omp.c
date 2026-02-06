@@ -5,6 +5,7 @@
 #include <inttypes.h>
 #include <math.h>
 #include "common/csr_utils.h"
+#include "common/time_utils.h"
 
 double *e;
 double *vec0;
@@ -15,6 +16,9 @@ uint64_t *dangling;
 bool pagerank(const csr_matrix_t *const mat, double **rank);
 bool pagerank_original(const csr_matrix_t *const mat, double **rank);
 void cleanup(csr_matrix_t *mat, double *rank);
+int compare_doubles(const void *a, const void *b);
+double get_average(double *times, int n);
+double get_median(double *times, int n);
 
 void matvec_mul(const csr_matrix_t *const mat, const double *const vec, double *const out);
 void vec_add_scalar(const double *const vec1, double scalar, double *const out, uint64_t size);
@@ -60,11 +64,19 @@ int main(int argc, char **argv) {
     // Run PageRank
     double *rank = malloc(sizeof(double) * web.n_rows);
     for (int i = 0; i < tries; i++) {
+        double start = get_time();
         if (!pagerank(&web, &rank)) {
             cleanup(&web, rank);
             return -1;
         }
+        double end = get_time();
+
+        execution_times[i] = end - start;
     }
+
+    double avg = get_average(execution_times, tries);
+    double med = get_median(execution_times, tries);
+    printf("Average time: %lf - Median time: %lf\n", avg, med);
 
     // Cleanup
     cleanup(&web, rank);
@@ -155,6 +167,30 @@ void cleanup(csr_matrix_t *mat, double *rank) {
     free(diff);
     free(dangling);
 }
+
+int compare_doubles(const void *a, const void *b) {
+    double arg1 = *(const double *)a;
+    double arg2 = *(const double *)b;
+    if (arg1 < arg2) return -1;
+    if (arg1 > arg2) return 1;
+    return 0;
+}
+
+double get_average(double *times, int n) {
+    double sum = 0;
+    for (int i = 0; i < n; i++) sum += times[i];
+    return sum / n;
+}
+
+double get_median(double *times, int n) {
+    qsort(times, n, sizeof(double), compare_doubles);
+    if (n % 2 == 0) {
+        return (times[n / 2 - 1] + times[n / 2]) / 2.0;
+    } else {
+        return times[n / 2];
+    }
+}
+
 
 
 // Helper functions
