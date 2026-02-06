@@ -2,7 +2,7 @@ CFLAGS = -std=c99 -O3 -Wall -march=native
 COMMON_SRC = src/common/csr_utils.c
 LDFLAGS = -lm
 
-all: seq omp omp2 conv
+all: seq omp omp2 mpi conv
 
 seq:
 	mkdir -p bin
@@ -18,11 +18,11 @@ omp2:
 
 mpi:
 	mkdir -p bin
-	mpicc $(CFLAGS) src/pagerank_mpi.c $(COMMON_SRC) -Iinclude -o bin/mpi $(LDFLAGS)
+	mpicc $(CFLAGS) src/pagerank_mpi.c -Iinclude -o bin/mpi $(LDFLAGS)
 
 conv:
 	mkdir -p bin
 	gcc $(CFLAGS) src/converter.c -Iinclude -o bin/converter
 
 clean:
-	rm -f bin/*
+	rm -rf bin/*

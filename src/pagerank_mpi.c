@@ -1,4 +1,4 @@
-#include <mpi/mpi.h>
+#include <mpi.h>
 #include <stdbool.h>
 #include <inttypes.h>
 #include <stdlib.h>
@@ -16,6 +16,7 @@ int *counts;
 int *displs;
 
 bool pagerank(const csr_matrix_t *const mat, double **rankv, int rank, int n_proc);
+void cleanup(csr_matrix_t *const mat);
 int load_csr_mpi(const char *filename, csr_matrix_t *mat, int rank, int n);
 void find_dangling(const csr_matrix_t *const mat, uint64_t *const out, uint64_t *out_size, int rank, int n_proc);
 void matvec_mul(const csr_matrix_t *const mat, const double *const vec, double *const out, int n_proc);
@@ -85,7 +86,7 @@ int main(int argc, char **argv) {
     free(global_vec);
     free(counts);
     free(displs);
-    cleanup(&web, NULL); 
+    cleanup(&web); 
 
     MPI_Finalize();
     return 0;
@@ -141,6 +142,12 @@ bool pagerank(const csr_matrix_t *const mat, double **rankv, int rank, int n_pro
     return true;
 }
 
+void cleanup(csr_matrix_t *const mat) {
+    free(mat->values);
+    free(mat->columns);
+    free(mat->row_ptrs);
+}
+
 int load_csr_mpi(const char *filename, csr_matrix_t *mat, int rank, int n) {
     MPI_File fh;
     if (MPI_File_open(MPI_COMM_WORLD, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh)) {
@@ -184,6 +191,7 @@ int load_csr_mpi(const char *filename, csr_matrix_t *mat, int rank, int n) {
     uint64_t base_offset = mat->row_ptrs[0];
     for(uint64_t i = 0; i <= local_n; i++) mat->row_ptrs[i] -= base_offset;
     mat->n_rows = local_n;
+    mat->nnz = local_nnz;
 
     MPI_File_close(&fh);
     return 0;
