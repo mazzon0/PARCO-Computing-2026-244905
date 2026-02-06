@@ -15,8 +15,10 @@ mkdir -p results
 
 DATASETS=("stanford" "google")
 THREADS_LIST=(1 2 4 8 16 32 64)
-PLACES=("threads" "cores")
-BIND=("spread" "close")
+#PLACES=("threads" "cores")
+#BIND=("spread" "close")
+PLACES=("threads")
+BIND=("spread")
 
 module load perf || echo "Perf not found, continuing..."
 
@@ -32,7 +34,7 @@ for bind in "${BIND[@]}"; do
             for dataset in "${DATASETS[@]}"; do
                 echo "OMP2 bind=${bind} place=${place} threads=${threads} dataset=${dataset}" >> "$STATS_FILE"
                 perf stat -e cache-references,cache-misses,cycles,instructions \
-                    bin/omp "datasets/${dataset}.csr" 10 2>> "$STATS_FILE"
+                    bin/omp2 "datasets/${dataset}.csr" 10 2>> "$STATS_FILE"
             done
         done
     done
