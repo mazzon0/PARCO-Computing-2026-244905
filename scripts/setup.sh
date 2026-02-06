@@ -6,7 +6,7 @@ set -euo pipefail
 echo "Loading GCC and MPI..."
 module load gcc91
 gcc () { gcc -9.1.0 "$@"; }
-module load mpich-3.2.1-gcc-9.1.0
+module load mpich-3.2.1--gcc-9.1.0
 echo "Loaded GCC"
 echo ""
 
@@ -26,6 +26,6 @@ echo ""
 
 # Unload modules
 module unload gcc91
-module unload module load mpich-3.2.1-gcc-9.1.0
+module unload module load mpich-3.2.1--gcc-9.1.0
 
 # TODO add other implementations to test
