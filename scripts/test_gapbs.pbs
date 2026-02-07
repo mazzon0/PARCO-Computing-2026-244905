@@ -34,7 +34,7 @@ for bind in "${BIND[@]}"; do
             for dataset in "${DATASETS[@]}"; do
                 echo "GAPBS bind=${bind} place=${place} threads=${threads} dataset=${dataset}" >> $STATS_FILE
                 perf stat -e cache-references,cache-misses,cycles,instructions \
-                    comparison/gapbs/pr_spmv -f "datasets/${dataset}.el" -t 0.000001 -n 10 -i 1000 2>> $STATS_FILE
+                    comparison/gapbs/pr_spmv -f "datasets/${dataset}.el" -t 0.000001 -n 10 -i 1000 >> $STATS_FILE 2>&1
             done
         done
     done

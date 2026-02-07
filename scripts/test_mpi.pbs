@@ -23,9 +23,8 @@ module load gcc91 || echo "GCC not found, continuing..."
 echo "Running MPI Tests..."
 for processes in "${PROCESS_LIST[@]}"; do
     for dataset in "${DATASETS[@]}"; do
-        echo "MPI threads=${processes} dataset=${dataset}" >> "$STATS_FILE"
-        mpirun -np $processes perf stat -e cache-references,cache-misses,cycles,instructions \
-            bin/mpi "datasets/${dataset}.csr" 10 >> "${PMI_RANK}_${STATS_FILE}" 2>&1
+        mpirun -np $processes bash -c "perf stat -e cache-references,cache-misses,cycles,instructions \
+            bin/mpi datasets/${dataset}.csr 10 >> \${PMI_RANK}_${STATS_FILE} 2>&1"
     done
 done
 

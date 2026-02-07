@@ -34,7 +34,7 @@ for bind in "${BIND[@]}"; do
             for dataset in "${DATASETS[@]}"; do
                 echo "OMP2 bind=${bind} place=${place} threads=${threads} dataset=${dataset}" >> "$STATS_FILE"
                 perf stat -e cache-references,cache-misses,cycles,instructions \
-                    bin/omp2 "datasets/${dataset}.csr" 10 2>> "$STATS_FILE"
+                    bin/omp2 "datasets/${dataset}.csr" 10 >> "$STATS_FILE" 2>&1
             done
         done
     done
