@@ -18,17 +18,20 @@ def load_and_prepare_data():
         if os.path.exists(path):
             df = pd.read_csv(path)
             
-            # Clean dataset names (remove .csr, .el, or whitespace)
             if 'dataset' in df.columns:
-                df['dataset'] = df['dataset'].astype(str).str.replace(r'\.(csr|el)$', '', regex=True).str.strip()
+                # Standardize to lowercase and remove extensions
+                df['dataset'] = (df['dataset'].astype(str)
+                                 .str.replace(r'\.(csr|el)$', '', regex=True)
+                                 .str.strip().str.lower())
 
-            # Ensure numeric types
-            cols_to_fix = ['cache ref', 'cache miss', 'cycles', 'instructions', 'average time', 'median time', 'threads']
+            if 'threads' in df.columns:
+                df['threads'] = pd.to_numeric(df['threads'], errors='coerce').fillna(1).astype(int)
+
+            cols_to_fix = ['cache ref', 'cache miss', 'cycles', 'instructions', 'average time', 'median time']
             for col in cols_to_fix:
                 if col in df.columns:
                     df[col] = pd.to_numeric(df[col], errors='coerce')
             
-            # Derived metrics
             if 'instructions' in df.columns and 'cycles' in df.columns:
                 df['ipc'] = df['instructions'] / df['cycles']
             if 'cache miss' in df.columns and 'cache ref' in df.columns:
@@ -38,19 +41,10 @@ def load_and_prepare_data():
             
     return dfs
 
-def plot_per_dataset(dfs):
-    if 'seq' not in dfs:
-        print("Missing seq.csv. Speedup cannot be calculated.")
-        return
-
-    # Create baseline dictionary: { 'dataset_name': median_time_float }
-    seq_df = dfs['seq']
-    seq_baseline = seq_df.set_index('dataset')['median time'].to_dict()
+def plot_per_method(dfs):
+    methods = [m for m in ['omp', 'omp2', 'gapbs'] if m in dfs]
     
-    datasets = set()
-    for df in dfs.values():
-        datasets.update(df['dataset'].unique())
-
+    # Define the same metrics used in the dataset plots
     metrics = [
         ('median time', 'Execution Time (s)'),
         ('speedup', 'Speedup'),
@@ -62,114 +56,134 @@ def plot_per_dataset(dfs):
         ('miss_rate', 'Cache Miss Rate (%)')
     ]
 
-    methods_to_compare = {
-        'omp': 'omp (spread threads)',
-        'omp2': 'omp2',
-        'gapbs': 'gapbs'
-    }
+    for method in methods:
+        df = dfs[method]
+        datasets = sorted(df['dataset'].unique())
+        
+        # Create a 4x2 grid, similar to plot_per_dataset
+        fig, axes = plt.subplots(4, 2, figsize=(15, 22))
+        fig.suptitle(f'Performance Overview: {method.upper()}', fontsize=18, fontweight='bold')
+        axes = axes.flatten()
+        
+        plot_happened = False
+
+        for i, (metric, ylabel) in enumerate(metrics):
+            ax = axes[i]
+            
+            for ds in datasets:
+                subset = df[df['dataset'] == ds].sort_values('threads')
+                if subset.empty: continue
+                
+                if metric == 'speedup':
+                    # Calculate self-relative speedup for each dataset
+                    t1_row = subset[subset['threads'] == 1]
+                    if not t1_row.empty:
+                        base_time = t1_row['median time'].values[0]
+                        if base_time > 0:
+                            y = base_time / subset['median time']
+                            ax.plot(subset['threads'], y, marker='o', label=ds)
+                            plot_happened = True
+                else:
+                    if metric in subset.columns:
+                        ax.plot(subset['threads'], subset[metric], marker='o', label=ds)
+                        plot_happened = True
+
+            # Add ideal line specifically to the speedup subplot
+            if metric == 'speedup':
+                max_t = df['threads'].max()
+                ax.plot([1, max_t], [1, max_t], color='red', linestyle='--', alpha=0.5, label='Ideal')
+
+            ax.set_title(ylabel, fontweight='bold')
+            ax.set_xlabel('Threads')
+            ax.grid(True, linestyle='--', alpha=0.6)
+            
+            # Add legend to every subplot
+            handles, labels = ax.get_legend_handles_labels()
+            if handles:
+                ax.legend(fontsize='x-small', loc='best')
+
+        if plot_happened:
+            plt.tight_layout(rect=[0, 0.03, 1, 0.96])
+            out_path = f'results/{method}.png'
+            plt.savefig(out_path)
+            print(f"Saved Method Multi-plot: {out_path}")
+        
+        plt.close()
+
+def plot_per_dataset(dfs):
+    # Ensure seq_baseline is calculated within the scope
+    seq_baseline = {}
+    if 'seq' in dfs:
+        seq_baseline = dfs['seq'].groupby('dataset')['median time'].median().to_dict()
+
+    datasets = set()
+    for df in dfs.values():
+        if 'dataset' in df.columns:
+            datasets.update(df['dataset'].unique())
+
+    methods_to_compare = {'omp': 'omp', 'omp2': 'omp2', 'gapbs': 'gapbs'}
+    metrics = [
+        ('median time', 'Execution Time (s)'),
+        ('speedup', 'Speedup'),
+        ('instructions', 'Instructions'),
+        ('cycles', 'Clock Cycles'),
+        ('cache ref', 'Cache References'),
+        ('cache miss', 'Cache Misses'),
+        ('ipc', 'Instructions Per Clock (IPC)'),
+        ('miss_rate', 'Cache Miss Rate (%)')
+    ]
 
     for ds in datasets:
+        print(f"Processing dataset: {ds}...")
         fig, axes = plt.subplots(4, 2, figsize=(15, 20))
         fig.suptitle(f'Metrics for Dataset: {ds}', fontsize=16)
         axes = axes.flatten()
+        plot_has_any_data = False
 
         for i, (metric, ylabel) in enumerate(metrics):
             ax = axes[i]
             for method_key, label in methods_to_compare.items():
                 if method_key not in dfs: continue
                 
-                df_method = dfs[method_key]
-                subset = df_method[
-                    (df_method['dataset'] == ds) & 
-                    (df_method['bind'] == 'spread') & 
-                    (df_method['place'] == 'threads')
-                ].sort_values('threads')
+                df_m = dfs[method_key]
+                mask = (df_m['dataset'] == ds)
                 
+                # Check for env filters
+                if 'bind' in df_m.columns and 'spread' in df_m['bind'].values:
+                    mask &= (df_m['bind'] == 'spread')
+                
+                subset = df_m[mask].sort_values('threads')
                 if subset.empty: continue
-                
-                x = subset['threads']
+
                 if metric == 'speedup':
-                    base_time = seq_baseline.get(ds)
-                    # Check if base_time exists and is a valid number
-                    if base_time and pd.notnull(base_time) and base_time > 0:
-                        y = base_time / subset['median time']
-                    else:
-                        continue # Skip if no sequential baseline for this dataset
+                    t1_row = subset[subset['threads'] == 1]
+                    t1_time = None
+                    label_suffix = ""
+                    
+                    if not t1_row.empty:
+                        t1_time = t1_row['median time'].values[0]
+                        label_suffix = "(Self)"
+                    elif ds in seq_baseline:
+                        t1_time = seq_baseline[ds]
+                        label_suffix = "(vs Seq)"
+
+                    if t1_time:
+                        y = t1_time / subset['median time']
+                        ax.plot(subset['threads'], y, marker='o', label=f"{label} {label_suffix}")
+                        plot_has_any_data = True
                 else:
-                    y = subset[metric]
-                
-                ax.plot(x, y, marker='o', label=label)
+                    ax.plot(subset['threads'], subset[metric], marker='o', label=label)
+                    plot_has_any_data = True
             
             ax.set_title(ylabel)
             ax.set_xlabel('Threads')
-            ax.set_ylabel(ylabel)
+            ax.grid(True, linestyle='--', alpha=0.6)
             ax.legend()
-            ax.grid(True, linestyle='--', alpha=0.7)
 
-        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-        plt.savefig(f'results/{ds}.png')
-        print(f'Saved results/{ds}.png')
-        plt.close()
-
-# Note: plot_per_method should be updated with the same dataset cleaning and speedup logic
-def plot_per_method(dfs):
-    seq_baseline = dfs['seq'].set_index('dataset')['median time'].to_dict() if 'seq' in dfs else {}
-
-    metrics = [
-        ('median time', 'Execution Time (s)'),
-        ('speedup', 'Speedup'),
-        ('instructions', 'Instructions'),
-        ('cycles', 'Clock Cycles'),
-        ('cache ref', 'Cache References'),
-        ('cache miss', 'Cache Misses'),
-        ('ipc', 'Instructions Per Clock (IPC)'),
-        ('miss_rate', 'Cache Miss Rate (%)')
-    ]
-
-    for method_name, df_method in dfs.items():
-        datasets = df_method['dataset'].unique()
-        fig, axes = plt.subplots(4, 2, figsize=(15, 20))
-        fig.suptitle(f'Metrics for Method: {method_name}', fontsize=16)
-        axes = axes.flatten()
-
-        for i, (metric, ylabel) in enumerate(metrics):
-            ax = axes[i]
-            for ds in datasets:
-                if method_name == 'seq':
-                    subset = df_method[df_method['dataset'] == ds]
-                    x = [1]
-                else:
-                    subset = df_method[
-                        (df_method['dataset'] == ds) & 
-                        (df_method['bind'] == 'spread') & 
-                        (df_method['place'] == 'threads')
-                    ].sort_values('threads')
-                    x = subset['threads']
-                
-                if subset.empty: continue
-
-                if metric == 'speedup':
-                    base_time = seq_baseline.get(ds)
-                    if method_name == 'seq':
-                        y = [1.0] * len(subset)
-                    elif base_time and pd.notnull(base_time):
-                        y = base_time / subset['median time']
-                    else:
-                        continue
-                else:
-                    y = subset[metric]
-                
-                ax.plot(x, y, marker='s', label=ds)
-            
-            ax.set_title(ylabel)
-            ax.set_xlabel('Threads' if method_name != 'seq' else 'N/A')
-            ax.set_ylabel(ylabel)
-            ax.legend()
-            ax.grid(True, linestyle='--', alpha=0.7)
-
-        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-        plt.savefig(f'results/{method_name}.png')
-        print(f'Saved results/{method_name}.png')
+        if plot_has_any_data:
+            plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+            plt.savefig(f'results/{ds}.png')
+            print(f"Saved Dataset Plot: results/{ds}.png")
         plt.close()
 
 if __name__ == "__main__":

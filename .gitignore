@@ -1,10 +1,9 @@
-web_generator/
 bin/
 datasets/
 results/
 comparison/
 scripts/.venv/
 gapbs.txt
-output.txt
+custom.txt
 omp2.txt
 mpi.txt
