@@ -106,10 +106,10 @@ bin/seq datasets/dataset_name.csr
 
 Execute the OpenMP version with
 ```bash
-bin/omp datasets/dataset_name.csr
+bin/omp2 datasets/dataset_name.csr
 ```
 
 Execute the MPI version (using N processes) with
 ```bash
-mpirun -np N bin/omp datasets/dataset_name.csr
+mpirun -np N bin/mpi datasets/dataset_name.csr
 ```
