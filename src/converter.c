@@ -32,8 +32,8 @@ int main(int argc, char **argv) {
         }
     }
 
-    uint64_t n_rows = max_node;
-    uint64_t n_columns = max_node;
+    uint64_t n_rows = max_node + 1;
+    uint64_t n_columns = max_node + 1;
 
     // Count per-row and per-column links
     uint64_t *row_counts = calloc(n_rows, sizeof(uint64_t));
@@ -49,15 +49,16 @@ int main(int argc, char **argv) {
     }
 
     // Build row_ptrs
-    uint64_t *row_ptrs = calloc(n_rows, sizeof(uint64_t));
+    uint64_t *row_ptrs = calloc(n_rows + 1, sizeof(uint64_t)); // Note the +1
     uint64_t sum = 0;
     for (uint64_t i = 0; i < n_rows; i++) {
         row_ptrs[i] = sum;
         sum += row_counts[i];
     }
+    row_ptrs[n_rows] = sum;
 
     // Fill CSR arrays
-    double   *values  = malloc(nnz * sizeof(double));
+    float   *values  = malloc(nnz * sizeof(float));
     uint64_t *columns = malloc(nnz * sizeof(uint64_t));
     uint64_t *offsets = calloc(n_rows, sizeof(uint64_t));
 
@@ -98,9 +99,9 @@ int main(int argc, char **argv) {
     fwrite(&n_rows,    sizeof(uint64_t), 1, out);
     fwrite(&n_columns, sizeof(uint64_t), 1, out);
     fwrite(&nnz,       sizeof(uint64_t), 1, out);
-    fwrite(values,     sizeof(double),   nnz, out);
+    fwrite(values,     sizeof(float),   nnz, out);
     fwrite(columns,    sizeof(uint64_t), nnz, out);
-    fwrite(row_ptrs,   sizeof(uint64_t), n_rows, out);
+    fwrite(row_ptrs,   sizeof(uint64_t), n_rows + 1, out);
 
     fclose(out);
 

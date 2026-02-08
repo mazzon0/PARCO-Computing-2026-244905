@@ -17,9 +17,9 @@ int load_csr(const char *filename, csr_matrix_t *mat) {
     }
 
     // Allocate memory
-    mat->values = malloc(mat->nnz * sizeof(double));
+    mat->values = malloc(mat->nnz * sizeof(float));
     mat->columns = malloc(mat->nnz * sizeof(uint64_t));
-    mat->row_ptrs = malloc(mat->n_rows * sizeof(uint64_t));
+    mat->row_ptrs = malloc((mat->n_rows + 1) * sizeof(uint64_t));
 
     if (!mat->values || !mat->columns || !mat->row_ptrs) {
         perror("malloc");
@@ -31,7 +31,7 @@ int load_csr(const char *filename, csr_matrix_t *mat) {
     }
 
     // Read values
-    if (fread(mat->values, sizeof(double), mat->nnz, f) != mat->nnz) {
+    if (fread(mat->values, sizeof(float), mat->nnz, f) != mat->nnz) {
         perror("fread values");
         fclose(f);
         free(mat->values); free(mat->columns); free(mat->row_ptrs);
@@ -47,12 +47,13 @@ int load_csr(const char *filename, csr_matrix_t *mat) {
     }
 
     // Read row_ptrs
-    if (fread(mat->row_ptrs, sizeof(uint64_t), mat->n_rows, f) != mat->n_rows) {
+    if (fread(mat->row_ptrs, sizeof(uint64_t), mat->n_rows + 1, f) != mat->n_rows + 1) {
         perror("fread row_ptrs");
         fclose(f);
         free(mat->values); free(mat->columns); free(mat->row_ptrs);
         return -1;
     }
+    mat->row_ptrs[mat->n_rows] = mat->nnz;
 
     fclose(f);
     return 0;

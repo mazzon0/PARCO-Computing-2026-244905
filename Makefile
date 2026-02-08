@@ -14,7 +14,7 @@ omp:
 
 omp2:
 	mkdir -p bin
-	gcc -fopenmp $(CFLAGS) src/pagerank_omp.c $(COMMON_SRC) -Iinclude -o bin/omp2 -DMERGE_VECTOR_OPERATIONS $(LDFLAGS)
+	gcc -fopenmp $(CFLAGS) src/pagerank_omp.c $(COMMON_SRC) -Iinclude -o bin/omp2 -DMERGE_VECTOR_OPERATIONS -DGRAPH_REORDERING $(LDFLAGS)
 
 mpi:
 	mkdir -p bin

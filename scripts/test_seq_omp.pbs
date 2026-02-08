@@ -15,8 +15,8 @@ mkdir -p results
 
 DATASETS=("stanford" "google")
 THREADS_LIST=(1 2 4 8 16 32 64)
-PLACES=("threads" "cores")
-BIND=("spread" "close")
+PLACES=("threads")
+BIND=("spread")
 
 module load perf || echo "Perf not found, continuing..."
 

@@ -7,22 +7,22 @@
 #include <stdio.h>
 #include "common/csr_utils.h"
 
-double *e;
-double *vec0;
-double *vec1;
+float *e;
+float *vec0;
+float *vec1;
 uint64_t *dangling;
-double *global_vec;
+float *global_vec;
 int *counts;
 int *displs;
 
-bool pagerank(const csr_matrix_t *const mat, double **rankv, int rank, int n_proc);
+bool pagerank(const csr_matrix_t *const mat, float **rankv, int rank, int n_proc);
 void cleanup(csr_matrix_t *const mat);
 int load_csr_mpi(const char *filename, csr_matrix_t *mat, int rank, int n);
 void find_dangling(const csr_matrix_t *const mat, uint64_t *const out, uint64_t *out_size, int rank, int n_proc);
-void matvec_mul(const csr_matrix_t *const mat, const double *const vec, double *const out, int n_proc);
-double rank_loss(const uint64_t *const dangling_indices, const uint64_t dangling_size, const double *const rank);
-double random_surfer(double *new_rank, double *last_rank, double *e, uint64_t local_size, uint64_t global_size, double random_jump_prob, double teleport);
-int compare_doubles(const void *a, const void *b);
+void matvec_mul(const csr_matrix_t *const mat, const float *const vec, float *const out, int n_proc);
+float rank_loss(const uint64_t *const dangling_indices, const uint64_t dangling_size, const float *const rank);
+float random_surfer(float *new_rank, float *last_rank, float *e, uint64_t local_size, uint64_t global_size, float random_jump_prob, float teleport);
+int compare_floats(const void *a, const void *b);
 double get_average(double *times, int n);
 double get_median(double *times, int n);
 
@@ -60,11 +60,11 @@ int main(int argc, char **argv) {
     uint64_t local_size = web.n_rows;
     uint64_t global_size = web.n_columns;
 
-    e = malloc(sizeof(double) * local_size);
-    vec0 = malloc(sizeof(double) * local_size);
-    vec1 = malloc(sizeof(double) * local_size);
+    e = malloc(sizeof(float) * local_size);
+    vec0 = malloc(sizeof(float) * local_size);
+    vec1 = malloc(sizeof(float) * local_size);
     dangling = malloc(sizeof(uint64_t) * local_size);
-    global_vec = malloc(sizeof(double) * global_size);
+    global_vec = malloc(sizeof(float) * global_size);
     counts = malloc(sizeof(int) * n_proc);
     displs = malloc(sizeof(int) * n_proc);
 
@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
     }
 
     // Run PageRank
-    double *rankv = malloc(sizeof(double) * local_size);
+    float *rankv = malloc(sizeof(float) * local_size);
     for (int i = 0; i < tries; i++) {
         MPI_Barrier(MPI_COMM_WORLD);
         double start = MPI_Wtime();
@@ -111,29 +111,29 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-bool pagerank(const csr_matrix_t *const mat, double **rankv, int rank, int n_proc) {
-    const double EPSILON = 1e-6;
-    const double GLOBAL_RANK = 1.0;
+bool pagerank(const csr_matrix_t *const mat, float **rankv, int rank, int n_proc) {
+    const float EPSILON = 1e-6;
+    const float GLOBAL_RANK = 1.0;
     const uint32_t MAX_ITERATIONS = 1000;
-    const double RANDOM_JUMP_PROB = 0.15;
+    const float RANDOM_JUMP_PROB = 0.15;
     
     uint64_t local_size = mat->n_rows;
     uint64_t global_size = mat->n_columns;
 
     // Initial distribution: uniform
-    double init_val = GLOBAL_RANK / global_size;
+    float init_val = GLOBAL_RANK / global_size;
     for (uint64_t i = 0; i < local_size; i++) {
         e[i] = init_val;
     }
 
     // Initialization
-    double *last_rank = vec0;
-    double *new_rank = vec1;
-    memcpy(vec0, e, sizeof(double) * local_size);
+    float *last_rank = vec0;
+    float *new_rank = vec1;
+    memcpy(vec0, e, sizeof(float) * local_size);
     uint64_t dangling_size;
     find_dangling(mat, dangling, &dangling_size, rank, n_proc);
 
-    double delta;
+    float delta;
     uint32_t iteration = 0;
 
     do {
@@ -141,13 +141,13 @@ bool pagerank(const csr_matrix_t *const mat, double **rankv, int rank, int n_pro
         matvec_mul(mat, last_rank, new_rank, n_proc);
         
         // Compute lost rank (dangling pages)
-        double teleport = rank_loss(dangling, dangling_size, new_rank);
+        float teleport = rank_loss(dangling, dangling_size, new_rank);
         
         // Random surfer + compute delta
         delta = random_surfer(new_rank, last_rank, e, local_size, global_size, RANDOM_JUMP_PROB, teleport);
 
         // Update data of last iteration
-        double *aux = new_rank;
+        float *aux = new_rank;
         new_rank = last_rank;
         last_rank = aux;
 
@@ -156,7 +156,7 @@ bool pagerank(const csr_matrix_t *const mat, double **rankv, int rank, int n_pro
     } while(delta > EPSILON && iteration < MAX_ITERATIONS);
 
     // Store result
-    memcpy(*rankv, last_rank, sizeof(double) * local_size);
+    memcpy(*rankv, last_rank, sizeof(float) * local_size);
 
     return true;
 }
@@ -186,7 +186,7 @@ int load_csr_mpi(const char *filename, csr_matrix_t *mat, int rank, int n) {
     if (rank == n - 1) local_n = mat->n_rows - start_row;
     
     mat->row_ptrs = malloc((local_n + 1) * sizeof(uint64_t));
-    MPI_Offset row_ptr_offset = 24 + (mat->nnz * sizeof(double)) + (mat->nnz * sizeof(uint64_t)) + (start_row * sizeof(uint64_t));
+    MPI_Offset row_ptr_offset = 24 + (mat->nnz * sizeof(float)) + (mat->nnz * sizeof(uint64_t)) + (start_row * sizeof(uint64_t));
     MPI_File_read_at_all(fh, row_ptr_offset, mat->row_ptrs, local_n, MPI_UINT64_T, MPI_STATUS_IGNORE);
 
     uint64_t next_ptr;
@@ -201,11 +201,11 @@ int load_csr_mpi(const char *filename, csr_matrix_t *mat, int rank, int n) {
     uint64_t local_nnz = mat->row_ptrs[local_n] - mat->row_ptrs[0];
     uint64_t nnz_offset_count = mat->row_ptrs[0];
 
-    mat->values = malloc(local_nnz * sizeof(double));
+    mat->values = malloc(local_nnz * sizeof(float));
     mat->columns = malloc(local_nnz * sizeof(uint64_t));
 
-    MPI_File_read_at_all(fh, 24 + (nnz_offset_count * sizeof(double)), mat->values, local_nnz, MPI_DOUBLE, MPI_STATUS_IGNORE);
-    MPI_File_read_at_all(fh, 24 + (mat->nnz * sizeof(double)) + (nnz_offset_count * sizeof(uint64_t)), mat->columns, local_nnz, MPI_UINT64_T, MPI_STATUS_IGNORE);
+    MPI_File_read_at_all(fh, 24 + (nnz_offset_count * sizeof(float)), mat->values, local_nnz, MPI_FLOAT, MPI_STATUS_IGNORE);
+    MPI_File_read_at_all(fh, 24 + (mat->nnz * sizeof(float)) + (nnz_offset_count * sizeof(uint64_t)), mat->columns, local_nnz, MPI_UINT64_T, MPI_STATUS_IGNORE);
 
     uint64_t base_offset = mat->row_ptrs[0];
     for(uint64_t i = 0; i <= local_n; i++) mat->row_ptrs[i] -= base_offset;
@@ -244,11 +244,11 @@ void find_dangling(const csr_matrix_t *const mat, uint64_t *const out, uint64_t 
     free(global_counts);
 }
 
-void matvec_mul(const csr_matrix_t *const mat, const double *const vec, double *const out, int n_proc) {
-    MPI_Allgatherv(vec, (int)mat->n_rows, MPI_DOUBLE, global_vec, counts, displs, MPI_DOUBLE, MPI_COMM_WORLD);
+void matvec_mul(const csr_matrix_t *const mat, const float *const vec, float *const out, int n_proc) {
+    MPI_Allgatherv(vec, (int)mat->n_rows, MPI_FLOAT, global_vec, counts, displs, MPI_FLOAT, MPI_COMM_WORLD);
 
     for (uint64_t j = 0; j < mat->n_rows; j++) {
-        double sum = 0.0;
+        float sum = 0.0;
         for (uint64_t index = mat->row_ptrs[j]; index < mat->row_ptrs[j + 1]; index++) {
             sum += mat->values[index] * global_vec[mat->columns[index]];
         }
@@ -256,23 +256,23 @@ void matvec_mul(const csr_matrix_t *const mat, const double *const vec, double *
     }
 }
 
-double rank_loss(const uint64_t *const dangling_indices, const uint64_t dangling_size, const double *const rank) {
-    double local_sum = 0.0;
+float rank_loss(const uint64_t *const dangling_indices, const uint64_t dangling_size, const float *const rank) {
+    float local_sum = 0.0;
     for (uint64_t i = 0; i < dangling_size; i++) {
         local_sum += rank[dangling_indices[i]];
     }
     
-    double global_sum = 0.0;
-    MPI_Allreduce(&local_sum, &global_sum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    float global_sum = 0.0;
+    MPI_Allreduce(&local_sum, &global_sum, 1, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
     return global_sum;
 }
 
-double random_surfer(double *new_rank, double *last_rank, double *e, uint64_t local_size, uint64_t global_size, double random_jump_prob, double teleport) {
-    double local_delta = 0.0;
+float random_surfer(float *new_rank, float *last_rank, float *e, uint64_t local_size, uint64_t global_size, float random_jump_prob, float teleport) {
+    float local_delta = 0.0;
 
     for (uint64_t i = 0; i < local_size; i++) {
         // Random Surfer update
-        double v = (1.0 - random_jump_prob) * new_rank[i] + random_jump_prob * e[i];
+        float v = (1.0 - random_jump_prob) * new_rank[i] + random_jump_prob * e[i];
         v += teleport / global_size;
         new_rank[i] = v;
         
@@ -280,8 +280,8 @@ double random_surfer(double *new_rank, double *last_rank, double *e, uint64_t lo
         local_delta += fabs(v - last_rank[i]);
     }
     
-    double global_delta = 0.0;
-    MPI_Allreduce(&local_delta, &global_delta, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    float global_delta = 0.0;
+    MPI_Allreduce(&local_delta, &global_delta, 1, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
     return global_delta;
 }
 

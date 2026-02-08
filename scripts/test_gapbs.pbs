@@ -19,8 +19,8 @@ mkdir -p results
 
 STATS_FILE="results/gapbs_stats.txt"
 DATASETS=(stanford google)
-PLACES=(threads cores)
-BIND=(spread close)
+PLACES=(threads)
+BIND=(spread)
 
 module load perf || echo "Perf module not found, continuing without it..."
 

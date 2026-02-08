@@ -92,7 +92,7 @@ def save_csv(filename, data, fields):
             writer.writerow(filtered_row)
 
 if __name__ == "__main__":
-    log_files = ['result/custom_stats.txt', 'result/gapbs_stats.txt', 'result/omp2_stats.txt']
+    log_files = ['results/custom_stats.txt', 'results/gapbs_stats.txt', 'results/omp2_stats.txt']
     parsed_results = parse_stats(log_files)
 
     # Field configurations
@@ -100,9 +100,9 @@ if __name__ == "__main__":
     parallel_fields = ['dataset', 'threads', 'bind', 'place', 'cache ref', 'cache miss', 'cycles', 'instructions', 'average time', 'median time']
 
     # Write outputs
-    save_csv('result/seq.csv', parsed_results['seq'], seq_fields)
-    save_csv('result/omp.csv', parsed_results['omp'], parallel_fields)
-    save_csv('result/gapbs.csv', parsed_results['gapbs'], parallel_fields)
-    save_csv('result/omp2.csv', parsed_results['omp2'], parallel_fields)
+    save_csv('results/seq.csv', parsed_results['seq'], seq_fields)
+    save_csv('results/omp.csv', parsed_results['omp'], parallel_fields)
+    save_csv('results/gapbs.csv', parsed_results['gapbs'], parallel_fields)
+    save_csv('results/omp2.csv', parsed_results['omp2'], parallel_fields)
 
     print("CSV files generated successfully in the 'result/' directory.")
