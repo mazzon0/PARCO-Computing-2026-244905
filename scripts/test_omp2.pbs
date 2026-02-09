@@ -13,12 +13,12 @@ set -euo pipefail
 STATS_FILE="results/omp2_stats.txt"
 mkdir -p results
 
-DATASETS=("stanford" "google")
+DATASETS=(stanford google 100k 200k 400k 800k 1600k 3200k 6400k)
 THREADS_LIST=(1 2 4 8 16 32 64)
 #PLACES=("threads" "cores")
 #BIND=("spread" "close")
-PLACES=("threads")
-BIND=("spread")
+PLACES=(threads)
+BIND=(spread)
 
 module load perf || echo "Perf not found, continuing..."
 

@@ -18,7 +18,7 @@ fi
 mkdir -p results
 
 STATS_FILE="results/gapbs_stats.txt"
-DATASETS=(stanford google)
+DATASETS=(stanford google 100k 200k 400k 800k 1600k 3200k 6400k)
 PLACES=(threads)
 BIND=(spread)
 
