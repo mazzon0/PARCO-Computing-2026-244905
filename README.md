@@ -60,6 +60,9 @@ exit
 
 ## General instructions
 
+The following sections contains more general and in-depth workflows to work with this project.
+The automations of the Quick Start section are built on top of these instructions.
+
 ### Installation
 This project requires a Linux environment with some basic development packages: `bash`, `gcc`, `gzip`, `make`, `wget`.
 
@@ -97,6 +100,20 @@ scripts/download.sh dataset_name
 ```
 
 Run `scripts/download.sh` to see which datasets are available.
+
+It's possible to generate synthetic datasets with a Python script. Setup the Python virtual environment.
+```bash
+scripts/setup_python.sh
+```
+
+Now you can generate a graph with N nodes and NNZ non-zero elements.
+The filename needs to be without extension, the script will automatically store 2 files: an edgelist `.el` and a binary CSR matrix `.csr`.
+The edgelist can be used by the GAPBS implementation.
+```bash
+source scripts/.venv/bin/activate
+python scripts/gen.py -n N -z NNZ -f filename
+deactivate
+```
 
 ### Execution
 Execute the sequential version with
