@@ -42,7 +42,7 @@ You can check all your currently running jobs (consider the STDIN job will alway
 qstat -u your_username
 ```
 
-When all jobs have finished you can generate `.png` plots and `.csv` files in the `results/` directory, containing data about execution time, instructions, clock cycles, memory accesses, cache misses.
+When all jobs have finished you can generate  `.csv` files in the `results/` directory, containing data about execution time, instructions, clock cycles, memory accesses, cache misses. This script will automatically generates some plots for each dataset and for each method in `.png` images in the `results/` directory.
 ```bash
 scripts/plot.sh
 ```
@@ -63,7 +63,7 @@ exit
 ### Installation
 This project requires a Linux environment with some basic development packages: `bash`, `gcc`, `gzip`, `make`, `wget`.
 
-On Ubuntu and Debian you can run this command to install the necessary packages.
+On Ubuntu and Debian (if there is the APT package manager) you can run this command to install the necessary packages.
 ```bash
 sudo apt-get update && sudo apt-get install build-essential gzip wget
 ```
