@@ -47,6 +47,11 @@ When all jobs have finished you can generate `.png` plots and `.csv` files in th
 scripts/plot.sh
 ```
 
+Delete the previous results before repeating the experiments.
+```bash
+rm -rf results
+```
+
 Exit the interactive session and go back to a head node.
 ```bash
 exit
