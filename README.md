@@ -32,11 +32,6 @@ Compile GAPBS for a comparison.
 scripts/setup_gapbs.sh
 ```
 
-Setup Python environment for analysing results at the end.
-```bash
-scripts/setup_python.sh
-```
-
 Now the setup has completed, and you are ready to schedule the PBS job.
 ```bash
 script/test.sh
