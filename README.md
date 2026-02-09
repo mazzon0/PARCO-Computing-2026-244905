@@ -42,7 +42,7 @@ Now the setup has completed, and you are ready to schedule the PBS job.
 script/test.sh
 ```
 
-You can check all your jobs that need to finish (consider the STDIN job will always appear, since you are in an interactive job).
+You can check all your currently running jobs (consider the STDIN job will always appear, as long as you are in an interactive session).
 ```bash
 qstat -u your_username
 ```
@@ -104,8 +104,11 @@ Execute the sequential version with
 bin/seq datasets/dataset_name.csr
 ```
 
-Execute the OpenMP version with
+Execute the OpenMP version (using N threads) with
 ```bash
+export OMP_NUM_THREADS=N
+export OMP_PROC_BIN=spread
+export OMP_PLACES=threads
 bin/omp2 datasets/dataset_name.csr
 ```
 
